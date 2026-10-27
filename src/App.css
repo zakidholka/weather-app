@@ -1,0 +1,257 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@200;300;400;600&display=swap");
+
+* { box-sizing: border-box; }
+
+/* Reset: a fresh Vite project ships starter styles in index.css (a 1126px centred #root, centred text,
+   an 18px base size, dark headings). These rules switch them off so the dashboard looks the same everywhere. */
+:root { font-size: 16px; line-height: 1.3; letter-spacing: normal; }
+html, body { height: 100%; margin: 0; padding: 0; }
+#root { display: block; width: 100%; max-width: none; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; text-align: left; }
+body { display: block; font-family: "Sora", "Avenir Next", "Segoe UI", system-ui, sans-serif; background: #0a1128; color: #fff; }
+h1, h2, h3, p { margin: 0; font-family: inherit; font-weight: inherit; line-height: inherit; letter-spacing: inherit; color: inherit; }
+button, input { font: inherit; letter-spacing: inherit; }
+:is(button, input):focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+/* Layout: everything fits one screen */
+.screen { position: relative; height: 100dvh; overflow: hidden; color: #fff; }
+.ui { position: relative; z-index: 1; height: 100%; max-width: 1500px; margin: 0 auto; padding: 20px 28px 24px; display: flex; flex-direction: column; gap: 16px; }
+.grid {
+  flex: 1; min-height: 0; display: grid; gap: 16px; transition: opacity 0.2s;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-rows: minmax(190px, 1fr) auto;
+  grid-template-areas: "hero hourly week" "hero stats week";
+}
+.grid.is-loading { opacity: 0.6; }
+.hero { grid-area: hero; }
+.hourly { grid-area: hourly; }
+.stats { grid-area: stats; }
+.week { grid-area: week; }
+
+.panel {
+  min-height: 0; padding: 16px 18px; border-radius: 22px;
+  /* glass look without backdrop-filter (re-blurring an animated sky every frame is very expensive) */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08)), rgba(8, 28, 56, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+h2 { margin: 0 0 8px; font-size: 0.95rem; font-weight: 600; opacity: 0.95; }
+
+/* Top bar */
+.topbar { display: flex; gap: 10px; align-items: center; flex: 0 1 520px; min-width: 300px; }
+.search { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.search > svg { position: absolute; left: 16px; opacity: 0.8; pointer-events: none; }
+.search input {
+  width: 100%; padding: 12px 18px 12px 44px; color: #fff; font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+.search input::placeholder { color: rgba(255, 255, 255, 0.78); }
+.suggest {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 5; margin: 0; padding: 6px; list-style: none;
+  background: rgba(16, 26, 44, 0.92); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 18px;
+  backdrop-filter: blur(20px); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+.suggest li { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 12px; cursor: pointer; }
+.suggest li:hover { background: rgba(255, 255, 255, 0.12); }
+.suggest span { font-size: 0.8rem; opacity: 0.7; }
+.round {
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center; color: #fff; cursor: pointer;
+  background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%;
+}
+.seg { display: flex; flex: none; padding: 3px; background: rgba(255, 255, 255, 0.16); border-radius: 999px; }
+.seg button { padding: 9px 14px; font-size: 0.85rem; font-weight: 600; color: #fff; background: none; border: 0; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: #fff; color: #10233a; }
+
+/* Hero: the temperature is the one big thing */
+.hero { display: flex; flex-direction: column; justify-content: center; padding-right: 8px; text-shadow: 0 2px 28px rgba(0, 0, 0, 0.28); }
+.place { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.5rem; font-weight: 600; }
+.place span { font-size: 1rem; font-weight: 300; opacity: 0.85; }
+.when { margin: 6px 0 0; font-size: 0.9rem; opacity: 0.85; }
+.temp { margin-top: 2vh; font-size: clamp(6rem, 24vh, 11.5rem); font-weight: 200; line-height: 0.95; letter-spacing: -0.05em; }
+.temp sup { font-size: 0.24em; font-weight: 300; letter-spacing: 0; vertical-align: top; margin-left: 4px; opacity: 0.85; }
+.cond { display: flex; align-items: center; gap: 12px; margin: 2vh 0 0; font-size: 1.3rem; }
+.range { display: flex; gap: 18px; margin: 8px 0 0; opacity: 0.88; }
+
+/* Hourly panel: see 'Hourly timeline' at the end */
+.hourly { display: flex; flex-direction: column; min-width: 0; container: hourly / inline-size; }
+
+/* Stat tiles */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 18px; }
+.tile-label { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; opacity: 0.85; }
+.tile strong { font-size: 1.3rem; font-weight: 600; margin-top: 2px; }
+.tile small { font-size: 0.75rem; opacity: 0.75; }
+
+/* 7-day list: bars show each day's range within the week's range */
+.week { display: flex; flex-direction: column; }
+.days { flex: 1; min-height: 0; margin: 0; padding: 0; list-style: none; display: grid; grid-auto-rows: minmax(0, 1fr); }
+.days li { display: grid; grid-template-columns: 3.4rem 1.6rem 2.4rem 2rem 1fr 2rem; align-items: center; gap: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
+.days li:last-child { border-bottom: 0; }
+.dow { font-weight: 600; font-size: 0.9rem; }
+.pop { font-size: 0.75rem; color: #bfe3ff; }
+.lo { text-align: right; opacity: 0.75; font-variant-numeric: tabular-nums; }
+.hi { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.track { position: relative; height: 6px; margin: 0 8px; background: rgba(255, 255, 255, 0.22); border-radius: 3px; }
+.track i { position: absolute; top: 0; bottom: 0; background: #fff; border-radius: 3px; }
+
+/* States */
+.state { flex: 1; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; color: #10233a; font-weight: 600; background: #fff; border: 0; border-radius: 999px; cursor: pointer; }
+.banner { margin: 0; padding: 10px 16px; max-width: 640px; border-radius: 14px; background: rgba(0, 0, 0, 0.35); font-size: 0.9rem; }
+.banner button { margin-left: 10px; color: #fff; background: none; border: 0; text-decoration: underline; cursor: pointer; }
+
+/* Animated sky */
+.fx { position: absolute; inset: 0; overflow: hidden; }
+.sky-layer { position: absolute; inset: 0; }
+.fx--clear .sky-layer { background: linear-gradient(180deg, #0b4a9c 0%, #3d8ad6 55%, #9fd0f2 100%); }
+.fx--clear.is-night .sky-layer { background: linear-gradient(180deg, #050a1f 0%, #14245a 60%, #2b3f82 100%); }
+.fx--cloud .sky-layer { background: linear-gradient(180deg, #34495c 0%, #6d8497 55%, #a7b7c4 100%); }
+.fx--cloud.is-night .sky-layer { background: linear-gradient(180deg, #0e141d 0%, #232e3d 60%, #3d4b5c 100%); }
+.fx--rain .sky-layer { background: linear-gradient(180deg, #1b2836 0%, #34495c 55%, #566f84 100%); }
+.fx--snow .sky-layer { background: linear-gradient(180deg, #3c5167 0%, #7d93a8 55%, #bccad6 100%); }
+.fx--storm .sky-layer { background: linear-gradient(180deg, #15111f 0%, #2c2340 55%, #4a3b66 100%); }
+.fx--fog .sky-layer { background: linear-gradient(180deg, #4a555e 0%, #7d8991 55%, #aeb7bd 100%); }
+.fx--rain.is-night .sky-layer, .fx--snow.is-night .sky-layer, .fx--fog.is-night .sky-layer, .fx--storm.is-night .sky-layer { filter: brightness(0.65); }
+.vignette { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.28)); }
+
+.sun { position: absolute; top: -14vmax; right: 6vw; width: 48vmax; height: 48vmax; border-radius: 50%; animation: pulse 9s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(255, 238, 190, 0.9) 0, rgba(255, 214, 140, 0.35) 24%, transparent 62%); }
+.sun.dim { opacity: 0.45; }
+.moon { position: absolute; top: 9vh; right: 12vw; width: 90px; height: 90px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, #dfe6f5 60%, #b9c4de); box-shadow: 0 0 80px 30px rgba(190, 205, 255, 0.35); }
+.star { position: absolute; border-radius: 50%; background: #fff; animation: twinkle ease-in-out infinite; }
+
+.cloud { position: absolute; left: 0; border-radius: 50%; --c: 255, 255, 255; background: radial-gradient(closest-side, rgba(var(--c), var(--o)), rgba(var(--c), 0)); animation: drift linear infinite; will-change: transform; }
+.fx--rain .cloud, .fx--storm .cloud { --c: 18, 26, 38; }
+.fx.is-night .cloud { --c: 120, 140, 170; opacity: 0.7; }
+
+.drop { position: absolute; top: -100px; width: 1.5px; background: linear-gradient(transparent, rgba(195, 220, 245, 0.75)); animation: fall linear infinite; will-change: transform; }
+.flake { position: absolute; top: -10px; border-radius: 50%; background: #fff; opacity: 0.85; animation: snow linear infinite; will-change: transform; }
+.flash { position: absolute; inset: 0; background: #cfd8ff; opacity: 0; animation: flash 8s infinite; }
+.mist { position: absolute; left: -20%; width: 140%; height: 30%; background: radial-gradient(closest-side, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0)); animation: mist 26s ease-in-out infinite alternate; }
+
+@keyframes pulse { 50% { transform: scale(1.06); opacity: 0.85; } }
+@keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes drift { from { transform: translateX(-60vw); } to { transform: translateX(110vw); } }
+@keyframes fall { from { transform: translate3d(0, -10vh, 0) rotate(12deg); } to { transform: translate3d(-14vh, 115vh, 0) rotate(12deg); } }
+@keyframes snow { from { transform: translate3d(0, -5vh, 0); } to { transform: translate3d(var(--dx), 108vh, 0); } }
+@keyframes flash { 0%, 91%, 100% { opacity: 0; } 92% { opacity: 0.55; } 93% { opacity: 0.05; } 94.5% { opacity: 0.45; } 96% { opacity: 0; } }
+@keyframes mist { to { transform: translateX(12%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx *, .grid { animation: none !important; transition: none !important; }
+}
+
+/* Tablet and phone: stacked and compact; scrolls only if the screen is too short */
+@media (max-width: 960px) {
+  .screen { overflow-y: auto; }
+  .ui { height: auto; min-height: 100%; padding: 14px 14px 20px; gap: 12px; }
+  .grid { grid-template-columns: 1fr; grid-template-rows: none; grid-template-areas: "hero" "hourly" "week" "stats"; gap: 12px; }
+  .hero { padding: 4px 4px 0; }
+  .place { font-size: 1.25rem; }
+  .temp { font-size: clamp(5rem, 16vh, 7rem); margin-top: 0; }
+  .cond { margin-top: 0; font-size: 1.1rem; }
+  .days { grid-auto-rows: auto; }
+  .days li { padding: 6px 0; }
+  .stats { gap: 8px; }
+  .tile { padding: 10px 12px; }
+  .tile strong { font-size: 1.1rem; }
+}
+
+/* Top row: search + saved cities */
+.bar { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.chips { flex: 1; min-width: 0; display: flex; gap: 8px; overflow-x: auto; padding: 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  display: flex; align-items: center; flex: none; color: #fff;
+  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+.chip.is-active { background: rgba(255, 255, 255, 0.95); color: #10233a; border-color: transparent; }
+.chip-main { display: flex; align-items: center; gap: 8px; padding: 9px 6px 9px 14px; color: inherit; background: none; border: 0; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+.chip-main b { font-weight: 600; }
+.chip-x { display: grid; place-items: center; width: 28px; height: 28px; margin-right: 6px; color: inherit; opacity: 0.65; background: none; border: 0; border-radius: 50%; cursor: pointer; }
+.chip-x:hover { opacity: 1; background: rgba(255, 255, 255, 0.2); }
+.chip.is-active .chip-x:hover { background: rgba(16, 35, 58, 0.12); }
+
+/* Save-city star next to the city name */
+.save { display: grid; place-items: center; width: 34px; height: 34px; margin-left: 4px; color: #fff; cursor: pointer; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%; }
+.save[aria-pressed="true"] { color: #ffd54a; }
+
+/* Air quality gauge */
+.aq-bar { display: block; height: 5px; margin-top: 6px; background: rgba(255, 255, 255, 0.22); border-radius: 3px; overflow: hidden; }
+.aq-bar i { display: block; height: 100%; border-radius: 3px; }
+
+/* Sky crossfade */
+.fx-fade { animation: sky-in 0.9s ease both; }
+@keyframes sky-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .fx-fade { animation: none !important; } }
+@media (max-width: 960px) {
+  .bar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .topbar { flex: none; min-width: 0; }
+}
+
+/* Data-source footer */
+.foot { flex: none; font-size: 0.78rem; opacity: 0.85; }
+.foot a { color: inherit; }
+
+/* Hourly timeline (fluid) */
+.panel-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.panel-head h2 { margin: 0; white-space: nowrap; }
+.legend { flex: 1; display: flex; justify-content: flex-end; gap: 12px; font-size: 0.72rem; opacity: 0.8; white-space: nowrap; }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.nav-btns { display: flex; gap: 6px; margin-left: auto; }
+.nav-btn { width: 30px; height: 30px; display: grid; place-items: center; color: #fff; cursor: pointer; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 50%; }
+.nav-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.24); }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* container-type lets the rows below react to the height the panel really has */
+.tl-scroll { flex: 1; min-height: 0; container: strip / size; display: flex; overflow-x: auto; overflow-y: hidden; cursor: grab; scrollbar-width: none; }
+.tl-scroll::-webkit-scrollbar { display: none; }
+.tl-scroll.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+.tl-scroll.dragging { cursor: grabbing; user-select: none; }
+.tl { display: flex; flex: none; min-width: 100%; width: max-content; margin: 0; padding: 0; list-style: none; }
+.hr { flex: 1 0 56px; display: flex; flex-direction: column; align-items: center; border-radius: 16px; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.hr.is-now { background: rgba(255, 255, 255, 0.14); }
+.hr-time { flex: none; height: 28px; display: flex; align-items: center; font-size: 0.78rem; font-weight: 600; }
+.hr-icon { flex: none; height: 34px; display: flex; align-items: center; }
+.hr-curve { position: relative; flex: 1; width: 100%; min-height: 56px; }
+.plot { position: absolute; inset: 26px 0 8px; }  /* top gap leaves room for the temperature label */
+.plot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.c-area { fill: rgba(255, 255, 255, 0.14); }
+.c-line { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.hr-dot { position: absolute; left: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #fff; }
+.hr-temp { position: absolute; left: 50%; transform: translate(-50%, calc(-100% - 8px)); font-size: 0.85rem; font-weight: 600; }
+.hr-stat { flex: none; height: 24px; display: flex; align-items: center; gap: 3px; font-size: 0.78rem; }
+.hr-stat svg { opacity: 0.7; }
+.wet { color: #bfe3ff; font-weight: 600; }
+.dry { opacity: 0.65; }
+
+/* Short panel: drop humidity first, then the curve (temperature stays as a number), then wind */
+@container strip (max-height: 214px) { .hr-hum { display: none; } }
+@container strip (max-height: 168px) {
+  .hr-curve { flex: none; height: 26px; min-height: 0; }
+  .plot { inset: 0; }
+  .plot svg, .hr-dot { display: none; }
+  .hr-temp { position: static; transform: none; display: grid; place-items: center; height: 100%; font-size: 0.95rem; }
+}
+@container strip (max-height: 132px) { .hr-wind { display: none; } }
+@container strip (max-height: 104px) { .hr-icon { display: none; } }
+
+@container hourly (max-width: 500px) { .legend { display: none; } }
+@media (max-width: 960px) {
+  .tl-scroll { flex: none; height: 232px; }
+}
+
+/* Extremely short windows: let the dashboard scroll instead of overlapping */
+@media (min-width: 961px) and (max-height: 540px) { .grid { overflow-y: auto; scrollbar-width: none; } }
+
+/* Short desktop windows: tiles keep value + label (air quality keeps its caption) and give the hourly panel more height */
+@media (min-width: 961px) and (max-height: 720px) {
+  .tile { padding: 10px 14px; gap: 0; justify-content: center; }
+  .tile small { display: none; }
+  .tile.air small { display: block; }
+  .tile strong { font-size: 1.15rem; margin-top: 0; }
+  .aq-bar { margin-top: 3px; }
+}
